@@ -22,6 +22,7 @@ pip install -e ".[dev]"
 - JAX 0.4.0+
 - NumPy 1.24.0+
 - SciPy 1.10.0+
+- h5py 3.0.0+
 
 ## Usage
 
