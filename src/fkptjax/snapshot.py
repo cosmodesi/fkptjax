@@ -1,24 +1,14 @@
 from dataclasses import dataclass
 
-import h5py
+import numpy as np
 
 from fkptjax.types import Float64NDArray
 
 
 @dataclass
 class CosmologyParams:
-    """Cosmological parameters"""
-    Om: float
-    h: float
-    zout: float
-    f0: float      # Growth rate at k→0
-    Dplus: float   # Growth factor D+(z)/D+(0)
-
-@dataclass
-class ModelParams:
-    """Model parameters"""
-    mgmodel: str
-    fR0: float
+    """Cosmological parameters from test data"""
+    f0: float  # Growth rate at k→0
 
 @dataclass
 class KGridParams:
@@ -30,38 +20,34 @@ class KGridParams:
 @dataclass
 class NumericalParams:
     """Numerical integration parameters"""
-    nquadSteps: int
+    nquadSteps: int  # Number of quadrature steps for k-integration
+    NQ: int          # Number of Gauss-Legendre points for Q-functions
+    NR: int          # Number of Gauss-Legendre points for R-functions
 
 @dataclass
 class KernelConstants:
-    """LCDM kernel constants"""
-    KA_LCDM: float
-    KAp_LCDM: float
-    KB_LCDM: float
-    KR1_LCDM: float
-    KR1p_LCDM: float
+    """SPT kernel constants"""
+    KA_LCDM: float   # Kernel constant A
+    KAp_LCDM: float  # Kernel constant Ap
+    KR1_LCDM: float  # Kernel constant CFD3
+    KR1p_LCDM: float # Kernel constant CFD3'
 
 @dataclass
 class SigmaValues:
     """Variance and damping integrals"""
-    sigma8: float
-    sigma2L: float
-    sigma2v: float
-    Sigma2: float
-    deltaSigma2: float
+    sigma2v: float  # Velocity dispersion σ²_v
 
 @dataclass
 class LinearPowerSpectrum:
     """Input linear power spectrum"""
-    k: Float64NDArray      # k values [h/Mpc]
-    P: Float64NDArray      # P(k) [(Mpc/h)³]
-    Ppp: Float64NDArray    # P''(k) second derivative
-    f: Float64NDArray      # f(k) growth rate
+    k: Float64NDArray  # k values [h/Mpc]
+    P: Float64NDArray  # P(k) [(Mpc/h)³]
+    f: Float64NDArray  # f(k) growth rate
 
 @dataclass
 class KFunctions:
-    """Output k-functions (27 arrays)"""
-    k: Float64NDArray
+    """Expected k-functions output (27 arrays + k-grid)"""
+    k: Float64NDArray  # Output k-grid (computed from kmin/kmax/Nk)
     # P22 components
     P22dd: Float64NDArray
     P22du: Float64NDArray
@@ -94,128 +80,131 @@ class KFunctions:
     Pbs2theta: Float64NDArray
     # Additional
     sigma32PSL: Float64NDArray
-    pkl: Float64NDArray    # Linear P(k) on output grid
-    fk: Float64NDArray     # f(k) on output grid
+    pkl: Float64NDArray  # Linear P(k) on output grid
 
 @dataclass
 class KFunctionsSnapshot:
-    """Complete snapshot data"""
-    # Metadata
-    timestamp: str
-    command_line: str
+    """Test data snapshot loaded from .npz file"""
     # Parameters
     cosmology: CosmologyParams
-    model: ModelParams
     k_grid: KGridParams
     numerical: NumericalParams
     kernels: KernelConstants
-    # Sigma values
     sigma_values: SigmaValues
     # Inputs
     ps_wiggle: LinearPowerSpectrum
     ps_nowiggle: LinearPowerSpectrum
-    # Outputs
+    # Expected outputs
     kfuncs_wiggle: KFunctions
     kfuncs_nowiggle: KFunctions
 
 
 def load_snapshot(filename: str) -> KFunctionsSnapshot:
-    """Load complete k-functions snapshot from HDF5 file."""
-    with h5py.File(filename, 'r') as f:
-        # Metadata
-        timestamp = f['/metadata'].attrs['timestamp'].decode('utf-8')
-        command_line = f['/metadata'].attrs['command_line'].decode('utf-8')
+    """Load complete k-functions snapshot from .npz file.
 
-        # Parameters - Cosmology
-        cosmology = CosmologyParams(
-            Om=f['/parameters/cosmology/Om'][0],
-            h=f['/parameters/cosmology/h'][0],
-            zout=f['/parameters/cosmology/zout'][0],
-            f0=f['/parameters/cosmology/f0'][0],
-            Dplus=f['/parameters/cosmology/Dplus'][0]
+    Args:
+        filename: Path to .npz file containing test data
+
+    Returns:
+        KFunctionsSnapshot object with all loaded data
+    """
+    data = np.load(filename)
+
+    # Extract scalar parameters (handle 0-d arrays)
+    def get_scalar(key: str) -> float:
+        val = data[key]
+        return float(val) if hasattr(val, 'shape') and val.shape == () else val
+
+    # Cosmology parameters
+    f0 = get_scalar('f0')
+    cosmology = CosmologyParams(f0=f0)
+
+    # K-grid parameters
+    k_grid = KGridParams(
+        kmin=get_scalar('kmin'),
+        kmax=get_scalar('kmax'),
+        Nk=int(get_scalar('Nk'))
+    )
+
+    # Numerical parameters
+    numerical = NumericalParams(
+        nquadSteps=int(get_scalar('nquadSteps')),
+        NQ=int(get_scalar('NQ')),
+        NR=int(get_scalar('NR'))
+    )
+
+    # Kernel constants
+    # Note: .npz stores ApOverf0 = KAp_LCDM / f0, so we multiply back to get KAp_LCDM
+    kernels = KernelConstants(
+        KA_LCDM=get_scalar('A'),
+        KAp_LCDM=get_scalar('ApOverf0') * f0,
+        KR1_LCDM=get_scalar('CFD3'),
+        KR1p_LCDM=get_scalar('CFD3p')
+    )
+
+    # Sigma values
+    sigma_values = SigmaValues(
+        sigma2v=get_scalar('sigma2v')
+    )
+
+    # Input power spectra
+    # Note: f is shared between wiggle and no-wiggle
+    k_in = data['k_in']
+    f_in = data['f']
+
+    ps_wiggle = LinearPowerSpectrum(
+        k=k_in,
+        P=data['P_wiggle'],
+        f=f_in
+    )
+
+    ps_nowiggle = LinearPowerSpectrum(
+        k=k_in,
+        P=data['P_nowiggle'],
+        f=f_in
+    )
+
+    # Expected k-functions outputs
+    def load_kfunctions(prefix: str) -> KFunctions:
+        # Compute output k-grid from parameters
+        k_out = np.geomspace(k_grid.kmin, k_grid.kmax, k_grid.Nk)
+
+        return KFunctions(
+            k=k_out,
+            P22dd=data[f'{prefix}_P22dd'],
+            P22du=data[f'{prefix}_P22du'],
+            P22uu=data[f'{prefix}_P22uu'],
+            P13dd=data[f'{prefix}_P13dd'],
+            P13du=data[f'{prefix}_P13du'],
+            P13uu=data[f'{prefix}_P13uu'],
+            I1udd1A=data[f'{prefix}_I1udd1A'],
+            I2uud1A=data[f'{prefix}_I2uud1A'],
+            I2uud2A=data[f'{prefix}_I2uud2A'],
+            I3uuu2A=data[f'{prefix}_I3uuu2A'],
+            I3uuu3A=data[f'{prefix}_I3uuu3A'],
+            I2uudd1BpC=data[f'{prefix}_I2uudd1BpC'],
+            I2uudd2BpC=data[f'{prefix}_I2uudd2BpC'],
+            I3uuud2BpC=data[f'{prefix}_I3uuud2BpC'],
+            I3uuud3BpC=data[f'{prefix}_I3uuud3BpC'],
+            I4uuuu2BpC=data[f'{prefix}_I4uuuu2BpC'],
+            I4uuuu3BpC=data[f'{prefix}_I4uuuu3BpC'],
+            I4uuuu4BpC=data[f'{prefix}_I4uuuu4BpC'],
+            Pb1b2=data[f'{prefix}_Pb1b2'],
+            Pb1bs2=data[f'{prefix}_Pb1bs2'],
+            Pb22=data[f'{prefix}_Pb22'],
+            Pb2s2=data[f'{prefix}_Pb2s2'],
+            Ps22=data[f'{prefix}_Ps22'],
+            Pb2theta=data[f'{prefix}_Pb2theta'],
+            Pbs2theta=data[f'{prefix}_Pbs2theta'],
+            sigma32PSL=data[f'{prefix}_sigma32PSL'],
+            pkl=data[f'{prefix}_pkl']
         )
 
-        # Parameters - Model
-        model = ModelParams(
-            mgmodel=f['/parameters/model/mgmodel'][0].decode('utf-8'),
-            fR0=f['/parameters/model/fR0'][0]
-        )
-
-        # Parameters - K-grid
-        k_grid = KGridParams(
-            kmin=f['/parameters/k_grid/kmin'][0],
-            kmax=f['/parameters/k_grid/kmax'][0],
-            Nk=f['/parameters/k_grid/Nk'][0]
-        )
-
-        # Parameters - Numerical
-        numerical = NumericalParams(
-            nquadSteps=f['/parameters/numerical/nquadSteps'][0]
-        )
-
-        # Parameters - Kernels
-        kernels = KernelConstants(
-            KA_LCDM=f['/parameters/kernels/KA_LCDM'][0],
-            KAp_LCDM=f['/parameters/kernels/KAp_LCDM'][0],
-            KB_LCDM=f['/parameters/kernels/KB_LCDM'][0],
-            KR1_LCDM=f['/parameters/kernels/KR1_LCDM'][0],
-            KR1p_LCDM=f['/parameters/kernels/KR1p_LCDM'][0]
-        )
-
-        # Sigma values
-        sigma_values = SigmaValues(
-            sigma8=f['/sigma_values/sigma8'][0],
-            sigma2L=f['/sigma_values/sigma2L'][0],
-            sigma2v=f['/sigma_values/sigma2v'][0],
-            Sigma2=f['/sigma_values/Sigma2'][0],
-            deltaSigma2=f['/sigma_values/deltaSigma2'][0]
-        )
-
-        # Input power spectra
-        ps_wiggle_data = f['/inputs/linear_ps_wiggle'][:]
-        ps_wiggle = LinearPowerSpectrum(
-            k=ps_wiggle_data[:, 0],
-            P=ps_wiggle_data[:, 1],
-            Ppp=ps_wiggle_data[:, 2],
-            f=ps_wiggle_data[:, 3]
-        )
-
-        ps_nowiggle_data = f['/inputs/linear_ps_nowiggle'][:]
-        ps_nowiggle = LinearPowerSpectrum(
-            k=ps_nowiggle_data[:, 0],
-            P=ps_nowiggle_data[:, 1],
-            Ppp=ps_nowiggle_data[:, 2],
-            f=ps_nowiggle_data[:, 3]
-        )
-
-        # Helper to load k-functions
-        def load_kfunctions(group_path: str) -> KFunctions:
-            g = f[group_path]
-            return KFunctions(
-                k=g['k'][:],
-                P22dd=g['P22dd'][:], P22du=g['P22du'][:], P22uu=g['P22uu'][:],
-                P13dd=g['P13dd'][:], P13du=g['P13du'][:], P13uu=g['P13uu'][:],
-                I1udd1A=g['I1udd1A'][:], I2uud1A=g['I2uud1A'][:], I2uud2A=g['I2uud2A'][:],
-                I3uuu2A=g['I3uuu2A'][:], I3uuu3A=g['I3uuu3A'][:],
-                I2uudd1BpC=g['I2uudd1BpC'][:], I2uudd2BpC=g['I2uudd2BpC'][:],
-                I3uuud2BpC=g['I3uuud2BpC'][:], I3uuud3BpC=g['I3uuud3BpC'][:],
-                I4uuuu2BpC=g['I4uuuu2BpC'][:], I4uuuu3BpC=g['I4uuuu3BpC'][:],
-                I4uuuu4BpC=g['I4uuuu4BpC'][:],
-                Pb1b2=g['Pb1b2'][:], Pb1bs2=g['Pb1bs2'][:], Pb22=g['Pb22'][:],
-                Pb2s2=g['Pb2s2'][:], Ps22=g['Ps22'][:],
-                Pb2theta=g['Pb2theta'][:], Pbs2theta=g['Pbs2theta'][:],
-                sigma32PSL=g['sigma32PSL'][:],
-                pkl=g['pkl'][:], fk=g['fk'][:]
-            )
-
-        kfuncs_wiggle = load_kfunctions('/outputs/kfunctions_wiggle')
-        kfuncs_nowiggle = load_kfunctions('/outputs/kfunctions_nowiggle')
+    kfuncs_wiggle = load_kfunctions('expected_wiggle')
+    kfuncs_nowiggle = load_kfunctions('expected_nowiggle')
 
     return KFunctionsSnapshot(
-        timestamp=timestamp,
-        command_line=command_line,
         cosmology=cosmology,
-        model=model,
         k_grid=k_grid,
         numerical=numerical,
         kernels=kernels,

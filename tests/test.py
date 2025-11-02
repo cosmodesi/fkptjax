@@ -18,7 +18,7 @@ def check_gpu_available():
 def main():
 
     # Get path to test data relative to this file
-    SNAPSHOT_FILE = Path(__file__).parent / 'data' / 'kfunctions_snapshot_new.h5'
+    SNAPSHOT_FILE = Path(__file__).parent / 'data' / 'test_data.npz'
     print(f"Loading snapshot from: {SNAPSHOT_FILE}")
     snapshot = load_snapshot(str(SNAPSHOT_FILE))
 

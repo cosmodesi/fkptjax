@@ -68,8 +68,8 @@ def measure_kfunctions(
     kmax = snapshot.k_grid.kmax
     Nk = snapshot.k_grid.Nk
     nquadSteps = snapshot.numerical.nquadSteps
-    NQ = 10
-    NR = 10
+    NQ = snapshot.numerical.NQ
+    NR = snapshot.numerical.NR
 
     start_time = time.time()
     kfuncs_in = setup_kfunctions(
@@ -92,17 +92,11 @@ def measure_kfunctions(
     elapsed_time = end_time - start_time
     print(f"{calculator_cls.__name__}.initialize in {1e3 * elapsed_time:.2f} ms")
 
-    # kernel constants
-    if False: # _KERNELS_LCDMfk_ on line 287
-        A = snapshot.kernels.KA_LCDM
-        ApOverf0 = snapshot.kernels.KAp_LCDM / snapshot.cosmology.f0
-        CFD3 = snapshot.kernels.KR1_LCDM
-        CFD3p = snapshot.kernels.KR1p_LCDM
-    else:
-        A = 1
-        ApOverf0 = 0
-        CFD3 = 1
-        CFD3p = 1
+    # kernel constants (use values from snapshot)
+    A = snapshot.kernels.KA_LCDM
+    ApOverf0 = snapshot.kernels.KAp_LCDM / snapshot.cosmology.f0
+    CFD3 = snapshot.kernels.KR1_LCDM
+    CFD3p = snapshot.kernels.KR1p_LCDM
 
     # Calculate k-functions first time to validate results and do any JIT initialization
     Pk_in = snapshot.ps_wiggle.P
