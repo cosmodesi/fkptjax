@@ -12,7 +12,7 @@ We also report the **full k-loop time** from running:
 
 ```bash
 ./fkpt chatty=1 Om=0.3 h=0.7 model=HS fR0=1.0e-6 suffix=_test zout=0.5 fnamePS=pkl_z05.dat
-
+```
 
 | Platform            | NumPy Init (ms) | NumPy First Eval (ms) | NumPy Avg Eval (ms) | JAX Init (ms) | JAX First Eval (ms) | JAX Avg Eval (ms) | GPU Init (ms) | GPU First Eval (ms) | GPU Avg Eval (ms) | FKPT Total (ms) |
 | ------------------- | --------------: | --------------------: | ------------------: | ------------: | ------------------: | ----------------: | ------------: | ------------------: | --------------:   | --------------: |
