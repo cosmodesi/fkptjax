@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 import jax
 
-from fkptjax.snapshot import load_snapshot
+from fkptjax.snapshot import load_snapshot, get_default_snapshot_path
 from fkptjax.util import measure_kfunctions
 from fkptjax.calculate_numpy import NumpyCalculator
 from fkptjax.calculate_jax import JaxCalculator
@@ -32,10 +32,9 @@ def run_benchmarks(data_file=None, nruns=100, calculators=None):
     """
     # Determine data file path
     if data_file is None:
-        data_file = Path(__file__).parent / 'data' / 'test_data.npz'
-    else:
-        data_file = Path(data_file)
+        data_file = get_default_snapshot_path()
 
+    data_file = Path(data_file)
     if not data_file.exists():
         print(f"Error: Data file not found: {data_file}", file=sys.stderr)
         return False

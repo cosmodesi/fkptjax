@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
 
 import numpy as np
 
@@ -99,15 +101,31 @@ class KFunctionsSnapshot:
     kfuncs_nowiggle: KFunctions
 
 
-def load_snapshot(filename: str) -> KFunctionsSnapshot:
+def get_default_snapshot_path() -> str:
+    """Get path to default test data snapshot file.
+
+    Returns:
+        Path to tests/data/test_data.npz relative to package root
+    """
+    # Get the directory containing this file (src/fkptjax/)
+    package_dir = Path(__file__).parent
+    # Go up to package root and into tests/data/
+    snapshot_path = package_dir.parent.parent / 'tests' / 'data' / 'test_data.npz'
+    return str(snapshot_path)
+
+
+def load_snapshot(filename: Optional[str] = None) -> KFunctionsSnapshot:
     """Load complete k-functions snapshot from .npz file.
 
     Args:
-        filename: Path to .npz file containing test data
+        filename: Path to .npz file containing test data.
+                  If None, uses default test_data.npz file.
 
     Returns:
         KFunctionsSnapshot object with all loaded data
     """
+    if filename is None:
+        filename = get_default_snapshot_path()
     data = np.load(filename)
 
     # Extract scalar parameters (handle 0-d arrays)
