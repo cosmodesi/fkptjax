@@ -2,6 +2,8 @@
 
 Perturbation theory calculations for LCDM and Modified Gravity theories using "fk"-Kernels implemented in Python with JAX.
 
+Based on the C code at https://github.com/alejandroaviles/fkpt, which is based on the paper Rodriguez-Meza, M. A. et al, "fkPT: Constraining scale-dependent modified gravity with the full-shape galaxy power spectrum", [JCAP03(2024)049](https://doi.org/10.1088/1475-7516/2024/03/049).
+
 ## Installation
 
 Install from source:

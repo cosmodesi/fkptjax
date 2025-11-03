@@ -5,5 +5,10 @@ This package implements perturbation theory calculations using fk-Kernels
 with JAX for high-performance automatic differentiation and JIT compilation.
 """
 
-__version__ = "0.1.0"
-__all__ = ["__version__"]
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("fkptjax")
+except PackageNotFoundError:
+    # Package is not installed
+    __version__ = "unknown"
