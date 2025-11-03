@@ -4,18 +4,14 @@ Perturbation theory calculations for LCDM and Modified Gravity theories using "f
 
 Based on the C code at https://github.com/alejandroaviles/fkpt, which is based on the paper Rodriguez-Meza, M. A. et al, "fkPT: Constraining scale-dependent modified gravity with the full-shape galaxy power spectrum", [JCAP03(2024)049](https://doi.org/10.1088/1475-7516/2024/03/049).
 
+See [KFUNCTIONS.md](KFUNCTIONS.md) for details on what quantities this code calculates. See the [included notebook](examples/kfunctions.ipynb) for examples of how to perform the calculations.
+
 ## Installation
 
-Install from source:
+Install from pip:
 
 ```bash
-pip install .
-```
-
-For development, install with dev dependencies:
-
-```bash
-pip install -e ".[dev]"
+pip install fkptjax
 ```
 
 ## Requirements
@@ -25,17 +21,15 @@ pip install -e ".[dev]"
 - NumPy 1.24.0+
 - SciPy 1.10.0+
 
-## Usage
-
-```python
-import fkptjax
-
-# Example usage will be added as the package develops
-```
-
-See the `examples/` directory for more detailed usage examples.
-
 ## Development
+
+For development, install with dev dependencies:
+
+```bash
+git clone https://github.com/cosmodesi/fkptjax.git
+cd fkptjax
+pip install -e ".[dev]"
+```
 
 Run tests:
 
