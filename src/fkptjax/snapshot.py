@@ -33,11 +33,12 @@ class InputParams:
     sigma2v: float  # Velocity dispersion σ²_v
 
 @dataclass
-class LinearPowerSpectrum:
-    """Input linear power spectrum"""
-    k: Float64NDArray  # k values [h/Mpc]
-    P: Float64NDArray  # P(k) [(Mpc/h)³]
-    f: Float64NDArray  # f(k) growth rate
+class InputArrays:
+    """Input arrays for k-functions calculations"""
+    k_in: Float64NDArray   # k values [h/Mpc]
+    Pk_in: Float64NDArray  # Linear power spectrum (wiggle) [(Mpc/h)³]
+    Pk_nw_in: Float64NDArray  # Linear power spectrum (no-wiggle) [(Mpc/h)³]
+    f_in: Float64NDArray   # Growth rate f(k)
 
 @dataclass
 class KFunctions:
@@ -82,9 +83,8 @@ class KFunctionsSnapshot:
     """Test data snapshot loaded from .npz file"""
     # Parameters
     params: InputParams
-    # Inputs
-    ps_wiggle: LinearPowerSpectrum
-    ps_nowiggle: LinearPowerSpectrum
+    # Input arrays
+    arrays: InputArrays
     # Expected outputs
     kfuncs_wiggle: KFunctions
     kfuncs_nowiggle: KFunctions
@@ -140,22 +140,38 @@ def load_snapshot(filename: Optional[str] = None) -> KFunctionsSnapshot:
         sigma2v=get_scalar('sigma2v')
     )
 
-    # Input power spectra
-    # Note: f is shared between wiggle and no-wiggle
-    k_in = data['k_in']
-    f_in = data['f']
-
-    ps_wiggle = LinearPowerSpectrum(
-        k=k_in,
-        P=data['P_wiggle'],
-        f=f_in
+    # Input arrays
+    arrays = InputArrays(
+        k_in=data['k_in'],
+        Pk_in=data['P_wiggle'],
+        Pk_nw_in=data['P_nowiggle'],
+        f_in=data['f']
     )
 
-    ps_nowiggle = LinearPowerSpectrum(
-        k=k_in,
-        P=data['P_nowiggle'],
-        f=f_in
-    )
+    # Validate input arrays
+    # Check all arrays are 1D
+    for field_name in ['k_in', 'Pk_in', 'Pk_nw_in', 'f_in']:
+        arr = getattr(arrays, field_name)
+        if arr.ndim != 1:
+            raise ValueError(f"Input array '{field_name}' must be 1D, got shape {arr.shape}")
+
+    # Check all arrays have the same size
+    sizes = {
+        'k_in': len(arrays.k_in),
+        'Pk_in': len(arrays.Pk_in),
+        'Pk_nw_in': len(arrays.Pk_nw_in),
+        'f_in': len(arrays.f_in)
+    }
+    if len(set(sizes.values())) != 1:
+        raise ValueError(f"All input arrays must have the same size, got {sizes}")
+
+    # Check k_in is strictly increasing
+    if not np.all(np.diff(arrays.k_in) > 0):
+        raise ValueError("k_in must be strictly increasing")
+
+    # Check k_in values are positive
+    if not np.all(arrays.k_in > 0):
+        raise ValueError("k_in values must be positive")
 
     # Expected k-functions outputs
     def load_kfunctions(prefix: str) -> KFunctions:
@@ -198,8 +214,7 @@ def load_snapshot(filename: Optional[str] = None) -> KFunctionsSnapshot:
 
     return KFunctionsSnapshot(
         params=params,
-        ps_wiggle=ps_wiggle,
-        ps_nowiggle=ps_nowiggle,
+        arrays=arrays,
         kfuncs_wiggle=kfuncs_wiggle,
         kfuncs_nowiggle=kfuncs_nowiggle
     )

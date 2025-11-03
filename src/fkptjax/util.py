@@ -68,7 +68,7 @@ def measure_kfunctions(
     """
 
     # Prepare k-functions input
-    k_in = snapshot.ps_wiggle.k
+    k_in = snapshot.arrays.k_in
     kmin = snapshot.params.kmin
     kmax = snapshot.params.kmax
     Nk = snapshot.params.Nk
@@ -104,9 +104,9 @@ def measure_kfunctions(
     CFD3p = snapshot.params.KR1p_LCDM
 
     # Calculate k-functions first time to validate results and do any JIT initialization
-    Pk_in = snapshot.ps_wiggle.P
-    Pk_nw_in = snapshot.ps_nowiggle.P
-    fk_in = snapshot.ps_wiggle.f
+    Pk_in = snapshot.arrays.Pk_in
+    Pk_nw_in = snapshot.arrays.Pk_nw_in
+    fk_in = snapshot.arrays.f_in
     sigma2v = snapshot.params.sigma2v
     f0 = snapshot.params.f0
     start_time = time.time()
