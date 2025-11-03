@@ -41,8 +41,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/dkirkby/fkptjax"
-Repository = "https://github.com/dkirkby/fkptjax"
+Homepage = "https://github.com/cosmodesi/fkptjax"
+Repository = "https://github.com/cosmodesi/fkptjax"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

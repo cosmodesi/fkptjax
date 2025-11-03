@@ -1,5 +1,10 @@
 # fkptjax
 
+[![PyPI version](https://badge.fury.io/py/fkptjax.svg)](https://badge.fury.io/py/fkptjax)
+[![Python](https://img.shields.io/pypi/pyversions/fkptjax.svg)](https://pypi.org/project/fkptjax/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://github.com/cosmodesi/fkptjax/actions/workflows/tests.yml/badge.svg)](https://github.com/cosmodesi/fkptjax/actions/workflows/tests.yml)
+
 Perturbation theory calculations for LCDM and Modified Gravity theories using "fk"-Kernels implemented in Python with JAX.
 
 Based on the C code at https://github.com/alejandroaviles/fkpt, which is based on the paper Rodriguez-Meza, M. A. et al, "fkPT: Constraining scale-dependent modified gravity with the full-shape galaxy power spectrum", [JCAP03(2024)049](https://doi.org/10.1088/1475-7516/2024/03/049).
