@@ -41,6 +41,28 @@ Run tests:
 pytest
 ```
 
+Run benchmarks (default: all calculators, 100 runs):
+
+```bash
+python tests/test.py
+```
+
+Run benchmarks with options:
+
+```bash
+# Run only NumPy calculator
+python tests/test.py -c numpy
+
+# Run with custom data file and 50 runs
+python tests/test.py -d mydata.npz -n 50
+
+# Run both NumPy and JAX CPU calculators
+python tests/test.py -c numpy jax-cpu
+
+# Show all options
+python tests/test.py --help
+```
+
 Run tests with coverage:
 
 ```bash

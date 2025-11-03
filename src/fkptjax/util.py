@@ -59,8 +59,12 @@ def measure_kfunctions(
         calculator_cls: KFunctionsCalculator,
         snapshot: KFunctionsSnapshot,
         nruns: int = 10
-        ) -> None:
-    """Measure k-functions using the provided calculator and snapshot data."""
+        ) -> bool:
+    """Measure k-functions using the provided calculator and snapshot data.
+
+    Returns:
+        True if validation passed, False otherwise
+    """
 
     # Prepare k-functions input
     k_in = snapshot.ps_wiggle.k
@@ -111,7 +115,8 @@ def measure_kfunctions(
     print(f"First {calculator_cls.__name__}.evaluate in {1e3 * elapsed_time:.2f} ms")
 
     # Validate results
-    if validate_kfunctions(kfuncs_out, snapshot):
+    validation_passed = validate_kfunctions(kfuncs_out, snapshot)
+    if validation_passed:
         print("K-functions validated successfully against the snapshot!")
     else:
         print("K-functions validation failed!")
@@ -124,3 +129,5 @@ def measure_kfunctions(
 
     elapsed_time = end_time - start_time
     print(f"Average {calculator_cls.__name__}.evaluate over {nruns} runs: {1e3 * elapsed_time / nruns:.1f} ms")
+
+    return validation_passed
