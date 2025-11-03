@@ -14,7 +14,9 @@ We also report the **full k-loop time** from running:
 ./fkpt chatty=1 Om=0.3 h=0.7 model=HS fR0=1.0e-6 suffix=_test zout=0.5 fnamePS=pkl_z05.dat
 ```
 
-| Platform            | NumPy Init (ms) | NumPy First Eval (ms) | NumPy Avg Eval (ms) | JAX Init (ms) | JAX First Eval (ms) | JAX Avg Eval (ms) | GPU Init (ms) | GPU First Eval (ms) | GPU Avg Eval (ms) | FKPT Total (ms) |
+**NOTE:** The `./fkpt ...` timing refers to the reference C implementation from the original `fkpt` codebase, available at https://github.com/alejandroaviles/fkpt. This serves as a baseline for comparing `fkptjax` performance against the established C version.
+
+| Platform            | NumPy Init (ms) | NumPy First Eval (ms) | NumPy Avg Eval (ms) | JAX CPU Init (ms) | JAX CPU First Eval (ms) | JAX CPU Avg Eval (ms) | JAX GPU Init (ms) | JAX GPU First Eval (ms) | JAX GPU Avg Eval (ms) | FKPT Total (ms) |
 | ------------------- | --------------: | --------------------: | ------------------: | ------------: | ------------------: | ----------------: | ------------: | ------------------: | --------------:   | --------------: |
 | Perlmutter (A100)   | 32.66           | 130.73                | 118.4               | 1992.12       | 882.00              | 32.8              | 2945.05       | 1798.78             | 19.4              | 249.12          |
 | Entropy (RTX 3090)  | 34.99           | 152.14                | 136.5               | 1372.46       | 793.30              | 51.5              | 2870.60       | 1874.32             | 17.8              | 229.00          |
