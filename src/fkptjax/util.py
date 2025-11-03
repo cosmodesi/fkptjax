@@ -69,12 +69,12 @@ def measure_kfunctions(
 
     # Prepare k-functions input
     k_in = snapshot.ps_wiggle.k
-    kmin = snapshot.k_grid.kmin
-    kmax = snapshot.k_grid.kmax
-    Nk = snapshot.k_grid.Nk
-    nquadSteps = snapshot.numerical.nquadSteps
-    NQ = snapshot.numerical.NQ
-    NR = snapshot.numerical.NR
+    kmin = snapshot.params.kmin
+    kmax = snapshot.params.kmax
+    Nk = snapshot.params.Nk
+    nquadSteps = snapshot.params.nquadSteps
+    NQ = snapshot.params.NQ
+    NR = snapshot.params.NR
 
     start_time = time.time()
     kfuncs_in = setup_kfunctions(
@@ -98,17 +98,17 @@ def measure_kfunctions(
     print(f"{calculator_cls.__name__}.initialize in {1e3 * elapsed_time:.2f} ms")
 
     # kernel constants (use values from snapshot)
-    A = snapshot.kernels.KA_LCDM
-    ApOverf0 = snapshot.kernels.KAp_LCDM / snapshot.cosmology.f0
-    CFD3 = snapshot.kernels.KR1_LCDM
-    CFD3p = snapshot.kernels.KR1p_LCDM
+    A = snapshot.params.KA_LCDM
+    ApOverf0 = snapshot.params.KAp_LCDM / snapshot.params.f0
+    CFD3 = snapshot.params.KR1_LCDM
+    CFD3p = snapshot.params.KR1p_LCDM
 
     # Calculate k-functions first time to validate results and do any JIT initialization
     Pk_in = snapshot.ps_wiggle.P
     Pk_nw_in = snapshot.ps_nowiggle.P
     fk_in = snapshot.ps_wiggle.f
-    sigma2v = snapshot.sigma_values.sigma2v
-    f0 = snapshot.cosmology.f0
+    sigma2v = snapshot.params.sigma2v
+    f0 = snapshot.params.f0
     start_time = time.time()
     kfuncs_out = calculator.evaluate(Pk_in, Pk_nw_in, fk_in, A, ApOverf0, CFD3, CFD3p, sigma2v, f0)
     end_time = time.time()

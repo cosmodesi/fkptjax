@@ -8,35 +8,28 @@ from fkptjax.types import Float64NDArray
 
 
 @dataclass
-class CosmologyParams:
-    """Cosmological parameters from test data"""
+class InputParams:
+    """Input parameters for k-functions calculations"""
+    # Cosmological parameters
     f0: float  # Growth rate at k→0
 
-@dataclass
-class KGridParams:
-    """Output k-grid parameters"""
-    kmin: float
-    kmax: float
-    Nk: int
+    # Output k-grid parameters (specify desired k grid for computed KFunctions)
+    kmin: float  # Minimum k value for output k-functions grid [h/Mpc]
+    kmax: float  # Maximum k value for output k-functions grid [h/Mpc]
+    Nk: int      # Number of k points in output k-functions grid
 
-@dataclass
-class NumericalParams:
-    """Numerical integration parameters"""
+    # Numerical integration parameters
     nquadSteps: int  # Number of quadrature steps for k-integration
     NQ: int          # Number of Gauss-Legendre points for Q-functions
     NR: int          # Number of Gauss-Legendre points for R-functions
 
-@dataclass
-class KernelConstants:
-    """SPT kernel constants"""
+    # SPT kernel constants
     KA_LCDM: float   # Kernel constant A
     KAp_LCDM: float  # Kernel constant Ap
     KR1_LCDM: float  # Kernel constant CFD3
     KR1p_LCDM: float # Kernel constant CFD3'
 
-@dataclass
-class SigmaValues:
-    """Variance and damping integrals"""
+    # Variance and damping integrals
     sigma2v: float  # Velocity dispersion σ²_v
 
 @dataclass
@@ -88,11 +81,7 @@ class KFunctions:
 class KFunctionsSnapshot:
     """Test data snapshot loaded from .npz file"""
     # Parameters
-    cosmology: CosmologyParams
-    k_grid: KGridParams
-    numerical: NumericalParams
-    kernels: KernelConstants
-    sigma_values: SigmaValues
+    params: InputParams
     # Inputs
     ps_wiggle: LinearPowerSpectrum
     ps_nowiggle: LinearPowerSpectrum
@@ -133,35 +122,21 @@ def load_snapshot(filename: Optional[str] = None) -> KFunctionsSnapshot:
         val = data[key]
         return float(val) if hasattr(val, 'shape') and val.shape == () else val
 
-    # Cosmology parameters
+    # Load all input parameters
     f0 = get_scalar('f0')
-    cosmology = CosmologyParams(f0=f0)
-
-    # K-grid parameters
-    k_grid = KGridParams(
+    # Note: .npz stores ApOverf0 = KAp_LCDM / f0, so we multiply back to get KAp_LCDM
+    params = InputParams(
+        f0=f0,
         kmin=get_scalar('kmin'),
         kmax=get_scalar('kmax'),
-        Nk=int(get_scalar('Nk'))
-    )
-
-    # Numerical parameters
-    numerical = NumericalParams(
+        Nk=int(get_scalar('Nk')),
         nquadSteps=int(get_scalar('nquadSteps')),
         NQ=int(get_scalar('NQ')),
-        NR=int(get_scalar('NR'))
-    )
-
-    # Kernel constants
-    # Note: .npz stores ApOverf0 = KAp_LCDM / f0, so we multiply back to get KAp_LCDM
-    kernels = KernelConstants(
+        NR=int(get_scalar('NR')),
         KA_LCDM=get_scalar('A'),
         KAp_LCDM=get_scalar('ApOverf0') * f0,
         KR1_LCDM=get_scalar('CFD3'),
-        KR1p_LCDM=get_scalar('CFD3p')
-    )
-
-    # Sigma values
-    sigma_values = SigmaValues(
+        KR1p_LCDM=get_scalar('CFD3p'),
         sigma2v=get_scalar('sigma2v')
     )
 
@@ -185,7 +160,7 @@ def load_snapshot(filename: Optional[str] = None) -> KFunctionsSnapshot:
     # Expected k-functions outputs
     def load_kfunctions(prefix: str) -> KFunctions:
         # Compute output k-grid from parameters
-        k_out = np.geomspace(k_grid.kmin, k_grid.kmax, k_grid.Nk).astype(np.float64)
+        k_out = np.geomspace(params.kmin, params.kmax, params.Nk).astype(np.float64)
 
         return KFunctions(
             k=k_out,
@@ -222,11 +197,7 @@ def load_snapshot(filename: Optional[str] = None) -> KFunctionsSnapshot:
     kfuncs_nowiggle = load_kfunctions('expected_nowiggle')
 
     return KFunctionsSnapshot(
-        cosmology=cosmology,
-        k_grid=k_grid,
-        numerical=numerical,
-        kernels=kernels,
-        sigma_values=sigma_values,
+        params=params,
         ps_wiggle=ps_wiggle,
         ps_nowiggle=ps_nowiggle,
         kfuncs_wiggle=kfuncs_wiggle,
