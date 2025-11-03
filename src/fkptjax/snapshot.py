@@ -167,7 +167,7 @@ def load_snapshot(filename: str) -> KFunctionsSnapshot:
     # Expected k-functions outputs
     def load_kfunctions(prefix: str) -> KFunctions:
         # Compute output k-grid from parameters
-        k_out = np.geomspace(k_grid.kmin, k_grid.kmax, k_grid.Nk)
+        k_out = np.geomspace(k_grid.kmin, k_grid.kmax, k_grid.Nk).astype(np.float64)
 
         return KFunctions(
             k=k_out,

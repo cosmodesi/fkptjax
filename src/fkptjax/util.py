@@ -15,12 +15,12 @@ def setup_kfunctions(
         ) -> KFunctionsInitData:
 
     # Initialize logarithmic output k grid
-    logk_grid = np.geomspace(kmin, kmax, Nk)
+    logk_grid = np.geomspace(kmin, kmax, Nk).astype(np.float64)
 
     # Set up quadrature k grid
     pmin = max(k_in[0], 0.01 * kmin)
     pmax = min(k_in[-1], 16.0 * kmax)
-    kk_grid = np.geomspace(pmin, pmax, nquadSteps)
+    kk_grid = np.geomspace(pmin, pmax, nquadSteps).astype(np.float64)
 
     # Initialize Gauss-Legendre nodes and weights on [-1,1]
     xxQ, wwQ = roots_legendre(NQ)
@@ -28,7 +28,8 @@ def setup_kfunctions(
 
     return KFunctionsInitData(
         k_in, logk_grid, kk_grid,
-        xxQ, wwQ, xxR, wwR,
+        xxQ.astype(np.float64), wwQ.astype(np.float64),
+        xxR.astype(np.float64), wwR.astype(np.float64),
     )
 
 def validate_kfunctions(
