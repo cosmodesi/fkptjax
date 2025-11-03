@@ -8,6 +8,12 @@ We report three timings for each backend:
 - **First eval** — first call to `evaluate()` (includes JAX compilation overhead)
 - **Avg eval** — average evaluation time over 100 calls
 
+**Benchmark procedure:** The `fkptjax` timings below are obtained by running the benchmark script in the repository:
+
+```bash
+python tests/test.py
+```
+
 We also report the **full k-loop time** from running:
 
 ```bash
@@ -15,6 +21,8 @@ We also report the **full k-loop time** from running:
 ```
 
 **NOTE:** The `./fkpt ...` timing refers to the reference C implementation from the original `fkpt` codebase, available at https://github.com/alejandroaviles/fkpt. This serves as a baseline for comparing `fkptjax` performance against the established C version.
+
+
 
 | Platform            | NumPy Init (ms) | NumPy First Eval (ms) | NumPy Avg Eval (ms) | JAX CPU Init (ms) | JAX CPU First Eval (ms) | JAX CPU Avg Eval (ms) | JAX GPU Init (ms) | JAX GPU First Eval (ms) | JAX GPU Avg Eval (ms) | FKPT Total (ms) |
 | ------------------- | --------------: | --------------------: | ------------------: | ------------: | ------------------: | ----------------: | ------------: | ------------------: | --------------:   | --------------: |
