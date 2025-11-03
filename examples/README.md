@@ -1,21 +1,10 @@
 # Examples
 
-This directory contains example scripts demonstrating how to use fkptjax.
-
-## Running Examples
+This directory contains examples demonstrating how to use fkptjax.
 
 Make sure you have installed fkptjax first:
-
 ```bash
-pip install -e .
+pip install fkptjax
 ```
 
-Then run any example:
-
-```bash
-python examples/basic_usage.py
-```
-
-## Available Examples
-
-- `basic_usage.py`: Demonstrates basic kernel computation with scalar and array inputs
+Then open the jupyter notebook `kfunctions.ipynb`.
