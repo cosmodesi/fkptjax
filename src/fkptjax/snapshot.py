@@ -89,6 +89,37 @@ class KFunctionsSnapshot:
     kfuncs_wiggle: KFunctions
     kfuncs_nowiggle: KFunctions
 
+    def print_params(self) -> None:
+        """Pretty-print input parameters with descriptive labels and units."""
+        p = self.params
+
+        print("Input Parameters")
+        print("=" * 60)
+
+        print("\nCosmology:")
+        print(f"  Growth rate at k→0 (f0)                : {p.f0:.6f}")
+
+        print("\nOutput k-grid (for computed KFunctions):")
+        print(f"  Minimum k (kmin)                       : {p.kmin:.6f} h/Mpc")
+        print(f"  Maximum k (kmax)                       : {p.kmax:.6f} h/Mpc")
+        print(f"  Number of k points (Nk)                : {p.Nk}")
+
+        print("\nNumerical Integration:")
+        print(f"  Quadrature steps for k-integration     : {p.nquadSteps}")
+        print(f"  Gauss-Legendre points for Q-functions  : {p.NQ}")
+        print(f"  Gauss-Legendre points for R-functions  : {p.NR}")
+
+        print("\nSPT Kernel Constants (LCDM):")
+        print(f"  Kernel constant A (KA_LCDM)            : {p.KA_LCDM:.6f}")
+        print(f"  Kernel constant Ap (KAp_LCDM)          : {p.KAp_LCDM:.6f}")
+        print(f"  Kernel constant CFD3 (KR1_LCDM)        : {p.KR1_LCDM:.6f}")
+        print(f"  Kernel constant CFD3' (KR1p_LCDM)      : {p.KR1p_LCDM:.6f}")
+
+        print("\nVariance and Damping:")
+        print(f"  Velocity dispersion σ²_v (sigma2v)     : {p.sigma2v:.6f} (Mpc/h)²")
+
+        print("=" * 60)
+
 
 def get_default_snapshot_path() -> str:
     """Get path to default test data snapshot file.
