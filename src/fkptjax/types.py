@@ -16,6 +16,7 @@ class KFunctionsInitData(NamedTuple):
     wwR: Float64NDArray
 
 class KFunctionsOut(NamedTuple):
+    """See KFUNCTIONS.md for definitions of these quantities."""
     P22dd: Float64NDArray
     P22du: Float64NDArray
     P22uu: Float64NDArray
