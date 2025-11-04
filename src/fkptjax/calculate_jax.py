@@ -24,6 +24,90 @@ from typing import Dict, Any, Tuple
 from fkptjax.types import KFunctionsInitData, KFunctionsOut, Float64NDArray, AbsCalculator
 
 
+def precompute_spline_matrix_factors(x: Array) -> Tuple[Array, Array, Array, int]:
+    """Precompute matrix factorization for cubic spline second derivatives.
+
+    The tridiagonal system structure depends only on the x-grid (knot positions),
+    not on the y-values. By precomputing these factors once during initialization,
+    we avoid redundant computation in every evaluate() call.
+
+    Args:
+        x: Knot positions (1D array, shape: (n_knots,))
+
+    Returns:
+        Tuple of (sig, inv_h, inv_h_span, n) where:
+        - sig: h[i-1] / h_span[i-1] for i=1..n-2 (shape: (n_knots-2,))
+        - inv_h: 1/h for all intervals (shape: (n_knots-1,))
+        - inv_h_span: 1/h_span for all spans (shape: (n_knots-2,))
+        - n: number of knots (scalar)
+    """
+    n = len(x)
+    h = jnp.diff(x)  # x[i+1] - x[i] for all i
+    h_span = x[2:] - x[:-2]  # x[i+1] - x[i-1] for i=1..n-2
+
+    # Precompute sig = h[i-1] / h_span[i-1] for i=1..n-2
+    sig = h[:-1] / h_span
+
+    # Precompute reciprocals to replace division with multiplication
+    inv_h = 1.0 / h
+    inv_h_span = 1.0 / h_span
+
+    return sig, inv_h, inv_h_span, n
+
+
+@partial(jit, static_argnums=(4,))
+def calc_2nd_derivs_jax_optimized(y: Array, sig: Array, inv_h: Array, inv_h_span: Array, n: int) -> Array:
+    """Optimized cubic spline second derivative computation using precomputed factors.
+
+    This version uses precomputed matrix factors (sig, inv_h, inv_h_span) to avoid
+    redundant computation of grid-dependent quantities. This is especially beneficial
+    when called repeatedly with the same x-grid but different y-values (e.g., in MCMC).
+
+    Args:
+        y: Function values at knots (shape: (n_features, n_knots))
+        sig: Precomputed h[i-1]/h_span[i-1] values (shape: (n_knots-2,))
+        inv_h: Precomputed 1/h values (shape: (n_knots-1,))
+        inv_h_span: Precomputed 1/h_span values (shape: (n_knots-2,))
+        n: Number of knots (static argument)
+
+    Returns:
+        y2: Second derivatives (shape: (n_features, n_knots))
+    """
+    from jax import lax
+
+    # Initialize arrays
+    y2 = jnp.zeros_like(y)
+    u = jnp.zeros_like(y)
+
+    # Forward sweep using precomputed factors
+    def forward_sweep_scan(carry: Tuple[Array, Array], i: Array) -> Tuple[Tuple[Array, Array], None]:
+        y2, u = carry
+        sig_i = sig[i-1]
+        p = sig_i * y2[:, i-1] + 2.0
+        y2_i = (sig_i - 1.0) / p
+
+        # Use precomputed reciprocals (multiplication is faster than division)
+        udiff = (y[:, i+1] - y[:, i]) * inv_h[i] - (y[:, i] - y[:, i-1]) * inv_h[i-1]
+        u_i = (6.0 * udiff * inv_h_span[i-1] - sig_i * u[:, i-1]) / p
+
+        # Update y2 and u at index i
+        y2 = y2.at[:, i].set(y2_i)
+        u = u.at[:, i].set(u_i)
+        return (y2, u), None
+
+    (y2, u), _ = lax.scan(forward_sweep_scan, (y2, u), jnp.arange(1, n-1))
+
+    # Back substitution using lax.scan
+    def back_sub_scan(y2: Array, k: Array) -> Tuple[Array, None]:
+        # k iterates from n-2 down to 0
+        y2_k = y2[:, k] * y2[:, k+1] + u[:, k]
+        return y2.at[:, k].set(y2_k), None
+
+    y2, _ = lax.scan(back_sub_scan, y2, jnp.arange(n-2, -1, -1))
+
+    return y2
+
+
 @jit
 def calc_2nd_derivs_jax(x: Array, y: Array) -> Array:
     """JAX-compatible cubic spline initialization.
@@ -32,6 +116,10 @@ def calc_2nd_derivs_jax(x: Array, y: Array) -> Array:
     This is a JAX port of util.init_cubic_spline that can be JIT-compiled.
 
     Optimized version using lax.scan for better performance.
+
+    Note: This function is kept for backward compatibility. For better performance
+    when the x-grid is fixed, use precompute_spline_matrix_factors() followed by
+    calc_2nd_derivs_jax_optimized().
 
     Args:
         x: Knot positions (1D array, shape: (n_knots,))
@@ -561,6 +649,11 @@ class JaxCalculator(AbsCalculator):
         self.spline_logk = None
         self.spline_kk = None
         self.spline_y = None
+        # Precomputed spline matrix factors for k_in grid (optimization for MCMC)
+        self.spline_sig_jax = None
+        self.spline_inv_h_jax = None
+        self.spline_inv_h_span_jax = None
+        self.spline_n = None
         # Precomputed Q-function quantities
         self.logk_grid2_jax = None
         self.dkk_jax = None
@@ -614,7 +707,16 @@ class JaxCalculator(AbsCalculator):
         # 2. Coefficients for interpolating onto kk_grid
         self.spline_kk = init_cubic_spline_jax(self.k_in_jax, self.kk_grid_jax)
 
-        # 3. Pre-compute Q-function quantities and spline coefficients
+        # 3. Pre-compute spline matrix factors for k_in grid (optimization for MCMC)
+        # These factors depend only on the k_in grid structure, not on Y values,
+        # so we compute them once during initialization to speed up evaluate()
+        sig, inv_h, inv_h_span, n = precompute_spline_matrix_factors(self.k_in_jax)
+        self.spline_sig_jax = sig
+        self.spline_inv_h_jax = inv_h
+        self.spline_inv_h_span_jax = inv_h_span
+        self.spline_n = int(n)  # Convert to Python int for static argument
+
+        # 4. Pre-compute Q-function quantities and spline coefficients
         # Compute variable integration limits for mu (local variables only needed here)
         rmax = self.k_in_jax[-1] / self.logk_grid_jax
         rmin = self.k_in_jax[0] / self.logk_grid_jax
@@ -684,8 +786,16 @@ class JaxCalculator(AbsCalculator):
         Y = np.stack([Pk_in, Pk_nw_in, fk_in / f0], axis=0)
         Y_jax = jnp.asarray(Y, dtype=jnp.float64)
 
-        # Compute second derivatives for cubic spline
-        Y2_jax = calc_2nd_derivs_jax(self.k_in_jax, Y_jax)
+        # Compute second derivatives for cubic spline using precomputed matrix factors
+        # This optimization is particularly beneficial for MCMC where evaluate() is called
+        # many times with the same k_in grid but different Y values
+        Y2_jax = calc_2nd_derivs_jax_optimized(
+            Y_jax,
+            self.spline_sig_jax,
+            self.spline_inv_h_jax,
+            self.spline_inv_h_span_jax,
+            self.spline_n
+        )
 
         # Run JIT-compiled calculation with all precomputed values
         # Unpack spline coefficient dictionaries
