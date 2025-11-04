@@ -9,7 +9,7 @@ Perturbation theory calculations for LCDM and Modified Gravity theories using "f
 
 Based on the C code at https://github.com/alejandroaviles/fkpt, which is based on the paper Rodriguez-Meza, M. A. et al, "fkPT: Constraining scale-dependent modified gravity with the full-shape galaxy power spectrum", [JCAP03(2024)049](https://doi.org/10.1088/1475-7516/2024/03/049).
 
-See [KFUNCTIONS.md](KFUNCTIONS.md) for details on what quantities this code calculates. See the [included notebook](examples/kfunctions.ipynb) for examples of how to perform the calculations.
+See [KFUNCTIONS.md](KFUNCTIONS.md) for details on what quantities this code calculates. See the [included notebook](examples/kfunctions.ipynb) for examples of how to perform the calculations. See [BENCHMARKS.md](BENCHMARKS.md) for timing benchmarks on different platforms.
 
 ## Installation
 
