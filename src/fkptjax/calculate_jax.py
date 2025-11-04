@@ -185,9 +185,11 @@ def eval_cubic_spline_jax(ya: Array, y2a: Array, x_shape: Tuple[int, ...], idx_l
     return result
 
 
-@partial(jit, static_argnums=(2, 10, 18))
+@partial(jit, static_argnums=(4, 5, 13, 21))
 def _calculate_jax_core(
-        Y: Array, Y2: Array,
+        Y: Array,
+        # Spline matrix factors for computing Y2 (k_in grid structure)
+        sig: Array, inv_h: Array, inv_h_span: Array, n: int,
         # Spline coefficients for logk_grid
         spline_logk_shape: Tuple[int, ...], spline_logk_idx_lo: Array, spline_logk_idx_hi: Array,
         spline_logk_a: Array, spline_logk_b: Array, spline_logk_a3: Array, spline_logk_b3: Array, spline_logk_h2: Array,
@@ -208,8 +210,15 @@ def _calculate_jax_core(
     This is the JIT-compiled inner function that operates entirely on JAX arrays.
     All precomputed quantities are passed as parameters.
 
-    Note: Y2 should be pre-computed and passed in as a JAX array for best performance.
+    This function now computes Y2 (spline second derivatives) internally using
+    precomputed matrix factors, allowing XLA to fuse this computation with
+    subsequent interpolations for better performance.
     """
+
+    # Compute spline second derivatives using precomputed matrix factors
+    # This computation is now inside the JIT boundary, allowing XLA to optimize
+    # across the entire calculation and eliminate intermediate GPU synchronization
+    Y2 = calc_2nd_derivs_jax_optimized(Y, sig, inv_h, inv_h_span, n)
 
     # Interpolate onto output grid using precomputed coefficients
     Pout, Pout_nw, fout = eval_cubic_spline_jax(
@@ -726,21 +735,15 @@ class JaxCalculator(AbsCalculator):
         Y = np.stack([Pk_in, Pk_nw_in, fk_in / f0], axis=0)
         Y_jax = jnp.asarray(Y, dtype=jnp.float64)
 
-        # Compute second derivatives for cubic spline using precomputed matrix factors
-        # This optimization is particularly beneficial for MCMC where evaluate() is called
-        # many times with the same k_in grid but different Y values
-        Y2_jax = calc_2nd_derivs_jax_optimized(
-            Y_jax,
-            self.spline_sig_jax,
-            self.spline_inv_h_jax,
-            self.spline_inv_h_span_jax,
-            self.spline_n
-        )
-
         # Run JIT-compiled calculation with all precomputed values
+        # Y2 (spline second derivatives) is now computed inside _calculate_jax_core
+        # using precomputed matrix factors. This eliminates an extra kernel launch
+        # and allows XLA to fuse the Y2 computation with subsequent operations.
         # Unpack spline coefficient dictionaries
         results = _calculate_jax_core(
-            Y_jax, Y2_jax,
+            Y_jax,
+            # Spline matrix factors for computing Y2 inside the JIT boundary
+            self.spline_sig_jax, self.spline_inv_h_jax, self.spline_inv_h_span_jax, self.spline_n,
             # Spline coefficients for logk_grid
             self.spline_logk['x_shape'], self.spline_logk['idx_lo_flat'], self.spline_logk['idx_hi_flat'],
             self.spline_logk['a_flat'], self.spline_logk['b_flat'], self.spline_logk['a3_flat'],
