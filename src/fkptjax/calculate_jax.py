@@ -108,66 +108,6 @@ def calc_2nd_derivs_jax_optimized(y: Array, sig: Array, inv_h: Array, inv_h_span
     return y2
 
 
-@jit
-def calc_2nd_derivs_jax(x: Array, y: Array) -> Array:
-    """JAX-compatible cubic spline initialization.
-
-    Computes second derivatives for cubic spline interpolation.
-    This is a JAX port of util.init_cubic_spline that can be JIT-compiled.
-
-    Optimized version using lax.scan for better performance.
-
-    Note: This function is kept for backward compatibility. For better performance
-    when the x-grid is fixed, use precompute_spline_matrix_factors() followed by
-    calc_2nd_derivs_jax_optimized().
-
-    Args:
-        x: Knot positions (1D array, shape: (n_knots,))
-        y: Function values at knots (shape: (n_features, n_knots))
-
-    Returns:
-        y2: Second derivatives (shape: (n_features, n_knots))
-    """
-    from jax import lax
-
-    n = len(x)
-    n_features = y.shape[0]
-
-    # Pre-compute interval widths to avoid redundant calculations
-    h = jnp.diff(x)  # x[i+1] - x[i] for all i
-    h_span = x[2:] - x[:-2]  # x[i+1] - x[i-1] for i=1..n-2
-
-    # Initialize arrays
-    y2 = jnp.zeros_like(y)
-    u = jnp.zeros_like(y)
-
-    # Forward sweep using lax.scan (more efficient than fori_loop for sequential operations)
-    def forward_sweep_scan(carry: Tuple[Array, Array], i: Array) -> Tuple[Tuple[Array, Array], None]:
-        y2, u = carry
-        sig = h[i-1] / h_span[i-1]
-        p = sig * y2[:, i-1] + 2.0
-        y2_i = (sig - 1.0) / p
-        udiff = (y[:, i+1] - y[:, i]) / h[i] - (y[:, i] - y[:, i-1]) / h[i-1]
-        u_i = (6.0 * udiff / h_span[i-1] - sig * u[:, i-1]) / p
-
-        # Update y2 and u at index i
-        y2 = y2.at[:, i].set(y2_i)
-        u = u.at[:, i].set(u_i)
-        return (y2, u), None
-
-    (y2, u), _ = lax.scan(forward_sweep_scan, (y2, u), jnp.arange(1, n-1))
-
-    # Back substitution using lax.scan
-    def back_sub_scan(y2: Array, k: Array) -> Tuple[Array, None]:
-        # k iterates from n-2 down to 0
-        y2_k = y2[:, k] * y2[:, k+1] + u[:, k]
-        return y2.at[:, k].set(y2_k), None
-
-    y2, _ = lax.scan(back_sub_scan, y2, jnp.arange(n-2, -1, -1))
-
-    return y2
-
-
 def init_cubic_spline_jax(xa: Array, x: Array) -> Dict[str, Any]:
     """Pre-compute cubic spline interpolation coefficients for given xa and x.
 
