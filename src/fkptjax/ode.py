@@ -311,36 +311,32 @@ class ModelDerivatives:
                 + self.S3dI(eta, x, k, p, Dpk, Dpp, D2f, D2mf)
         ])
 
-def DP(k, derivs, zout, xnow=-4):
+def solve_ode(dydx, y0, zout, xnow=-4):
     xstop = np.log(1.0/(1.0+zout))
     xspan = (xnow, xstop)
-    y0 = np.exp(xnow) * np.ones(2)
-    soln = scipy.integrate.solve_ivp(lambda x, y: derivs.firstOrder(x, y, k), xspan, y0)
+    soln = scipy.integrate.solve_ivp(dydx, xspan, y0)
     return soln.y[:, -1]
+
+def DP(k, derivs, zout, xnow=-4):
+    y0 = np.exp(xnow) * np.ones(2)
+    return solve_ode(lambda x, y: derivs.firstOrder(x, y, k), y0, zout, xnow)
 
 def growth_factor(k, derivs, zout, xnow=-4):
     y = DP(k, derivs, zout, xnow)
     return y[1] / y[0]
 
 def D2v2(kf, k1, k2, derivs, zout, xnow=-4):
-    xstop = np.log(1.0/(1.0+zout))
-    xspan = (xnow, xstop)
     y0 = np.empty(8)
     y0[:4] = np.exp(xnow)
     y0[4:] = 3 * np.exp(2 * xnow) / 7
     y0[5::2] *= 2
-    soln = scipy.integrate.solve_ivp(lambda x, y: derivs.secondOrder(x, y, kf, k1, k2), xspan, y0)
-    return soln.y[:,-1]
+    return solve_ode(lambda x, y: derivs.secondOrder(x, y, kf, k1, k2), y0, zout, xnow)
 
 def D3v2(x, k, p, derivs, zout, xnow=-4):
-    xstop = np.log(1.0/(1.0+zout))
-    xspan = (xnow, xstop)
     y0 = np.empty(10)
     y0[:4] = np.exp(xnow)
-    y0[4] = (3.0 / 7.0) * np.exp(2.0 * xnow) * (1.0 - np.square(x))
-    y0[5] = (6.0 / 7.0) * np.exp(2.0 * xnow) * (1.0 - np.square(x))
-    y0[6] = (3.0 / 7.0) * np.exp(2.0 * xnow) * (1.0 - np.square(x))
-    y0[7] = (6.0 / 7.0) * np.exp(2.0 * xnow) * (1.0 - np.square(x))
+    y0[4:8] = 3.0 * np.exp(2.0 * xnow) / 7.0 * (1.0 - np.square(x))
+    y0[5:8:2] *= 2.0
     y0[8] = (5.0 / (7.0 * 9.0)) * np.exp(3.0 * xnow) * np.square(1.0 - np.square(x)) * (
         1.0 / (1.0 + np.square(p / k) + 2.0 * (p / k) * x)
         + 1.0 / (1.0 + np.square(p / k) - 2.0 * (p / k) * x)
@@ -349,8 +345,7 @@ def D3v2(x, k, p, derivs, zout, xnow=-4):
         1.0 / (1.0 + np.square(p / k) + 2.0 * (p / k) * x)
         + 1.0 / (1.0 + np.square(p / k) - 2.0 * (p / k) * x)
     )
-    soln = scipy.integrate.solve_ivp(lambda eta, y: derivs.thirdOrder(eta, y, x, k, p), xspan, y0)
-    return soln.y[:, -1]
+    return solve_ode(lambda eta, y: derivs.thirdOrder(eta, y, x, k, p), y0, zout, xnow)
 
 def kernel_constants(derivs, zout, f0, xnow=-4):
     KMIN = 1e-20
