@@ -79,22 +79,6 @@ class ModelDerivatives:
     def source_A(self, eta, kf, k1, k2):
         return self.source_a(eta, kf) + self.source_FL(eta, kf, k1, k2) - self.source_dI(eta, kf, k1, k2)
 
-    def firstOrder(self, x, y, k):
-        f1x = self.f1(x)
-        return np.array([y[1], f1x * self.mu(x, k) * y[0] - (2 - f1x) * y[1]])
-
-    def secondOrder(self, x, y, kf, k1, k2):
-        f1x = self.f1(x)
-        f2x = 2 - f1x
-        srcA = self.source_A(x, kf, k1, k2)
-        srcB = self.source_b(x, kf, k1, k2)
-        return np.array([
-            y[1], f1x * self.mu(x, k1) * y[0] - f2x * y[1],
-            y[3], f1x * self.mu(x, k2) * y[2] - f2x * y[3],
-            y[5], f1x * self.mu(x, kf) * y[4] - f2x * y[5] + srcA * y[0] * y[2],
-            y[7], f1x * self.mu(x, kf) * y[6] - f2x * y[7] + srcB * y[0] * y[2]
-        ])
-
     # Third order helper functions
     def M1(self, eta):
         return 3.0 * np.square(self.mass(eta))
@@ -290,6 +274,43 @@ class ModelDerivatives:
             * self.K3dI(eta, x, k, p, Dpk, Dpp, D2f, D2mf) * Dpk * Dpp * Dpp
         )
 
+    def firstOrder(self, x, y, k):
+        f1x = self.f1(x)
+        return np.array([y[1], f1x * self.mu(x, k) * y[0] - (2 - f1x) * y[1]])
+
+    def secondOrder(self, x, y, kf, k1, k2):
+        f1x = self.f1(x)
+        f2x = 2 - f1x
+        srcA = self.source_A(x, kf, k1, k2)
+        srcB = self.source_b(x, kf, k1, k2)
+        return np.array([
+            y[1], f1x * self.mu(x, k1) * y[0] - f2x * y[1],
+            y[3], f1x * self.mu(x, k2) * y[2] - f2x * y[3],
+            y[5], f1x * self.mu(x, kf) * y[4] - f2x * y[5] + srcA * y[0] * y[2],
+            y[7], f1x * self.mu(x, kf) * y[6] - f2x * y[7] + srcB * y[0] * y[2]
+        ])
+
+    def thirdOrder(self, eta, y, x, k, p):
+        f1eta = self.f1(eta)
+        f2eta = 2 - f1eta
+        kplusp = self.kpp(x, k, p)
+        kpluspm = self.kpp(-x, k, p)
+        Dpk = y[0]
+        Dpp = y[2]
+        D2f = y[4]
+        D2mf = y[6]
+        return np.array([
+            y[1], f1eta * self.mu(eta, k) * y[0] - f2eta * y[1],
+            y[3], f1eta * self.mu(eta, p) * y[2] - f2eta * y[3],
+            y[5], f1eta * self.mu(eta, kplusp) * y[4] - f2eta * y[5] + self.SD2(eta, x, k, p) * y[0] * y[2],
+            y[7], f1eta * self.mu(eta, kpluspm) * y[6] - f2eta * y[7] + self.SD2(eta, -x, k, p) * y[0] * y[2],
+            y[9], f1eta * self.mu(eta, k) * y[8] - f2eta * y[9]
+                + self.S3I(eta, x, k, p, Dpk, Dpp, D2f, D2mf)
+                + self.S3II(eta, x, k, p, Dpk, Dpp, D2f, D2mf)
+                + self.S3FL(eta, x, k, p, Dpk, Dpp, D2f, D2mf)
+                + self.S3dI(eta, x, k, p, Dpk, Dpp, D2f, D2mf)
+        ])
+
 def DP(k, derivs, zout, xnow=-4):
     xstop = np.log(1.0/(1.0+zout))
     xspan = (xnow, xstop)
@@ -311,9 +332,34 @@ def D2v2(kf, k1, k2, derivs, zout, xnow=-4):
     soln = scipy.integrate.solve_ivp(lambda x, y: derivs.secondOrder(x, y, kf, k1, k2), xspan, y0)
     return soln.y[:,-1]
 
+def D3v2(x, k, p, derivs, zout, xnow=-4):
+    xstop = np.log(1.0/(1.0+zout))
+    xspan = (xnow, xstop)
+    y0 = np.empty(10)
+    y0[:4] = np.exp(xnow)
+    y0[4] = (3.0 / 7.0) * np.exp(2.0 * xnow) * (1.0 - np.square(x))
+    y0[5] = (6.0 / 7.0) * np.exp(2.0 * xnow) * (1.0 - np.square(x))
+    y0[6] = (3.0 / 7.0) * np.exp(2.0 * xnow) * (1.0 - np.square(x))
+    y0[7] = (6.0 / 7.0) * np.exp(2.0 * xnow) * (1.0 - np.square(x))
+    y0[8] = (5.0 / (7.0 * 9.0)) * np.exp(3.0 * xnow) * np.square(1.0 - np.square(x)) * (
+        1.0 / (1.0 + np.square(p / k) + 2.0 * (p / k) * x)
+        + 1.0 / (1.0 + np.square(p / k) - 2.0 * (p / k) * x)
+    )
+    y0[9] = (15.0 / (7.0 * 9.0)) * np.exp(3.0 * xnow) * np.square(1.0 - np.square(x)) * (
+        1.0 / (1.0 + np.square(p / k) + 2.0 * (p / k) * x)
+        + 1.0 / (1.0 + np.square(p / k) - 2.0 * (p / k) * x)
+    )
+    soln = scipy.integrate.solve_ivp(lambda eta, y: derivs.thirdOrder(eta, y, x, k, p), xspan, y0)
+    return soln.y[:, -1]
+
 def kernel_constants(derivs, zout, f0, xnow=-4):
     KMIN = 1e-20
+    # 2nd order
     Dpk1D2, _, Dpk2D2, _, DA2D2, DA2primeD2, DB2D2, _ = D2v2(KMIN, KMIN, KMIN, derivs, zout, xnow)
     KA_LCDM = DA2D2 / ((3/7) * Dpk1D2 * Dpk2D2)
     KAp_LCDM = DA2primeD2 / ((3/7) * Dpk1D2 * Dpk2D2) - 2 * DA2D2 / ((3/7) * Dpk1D2 * Dpk2D2) * f0
-    return KA_LCDM, KAp_LCDM
+    # 3rd order
+    DpkD3, _, DppD3, _, D2fD3, _, D2mfD3, _, D3symmD3, D3symmprimeD3 = D3v2(1e-7, KMIN, KMIN, derivs, zout, xnow)
+    KR1_LCDM = (21/5) * D3symmD3 / (DpkD3 * DppD3 * DppD3)
+    KR1p_LCDM = (21/5) * D3symmprimeD3 / (DpkD3 * DppD3 * DppD3) / (3 * f0)
+    return KA_LCDM, KAp_LCDM, KR1_LCDM, KR1p_LCDM
