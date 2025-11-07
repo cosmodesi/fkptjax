@@ -438,7 +438,8 @@ def odeint(
 
     # Output sampling (mimics NR globals: xp, yp, dxsav, kmax, kount)
     save_output = (kmax > 0 and dxsav is not None and dxsav > 0.0)
-    xsav = x - 2.0 * (dxsav if save_output else 1.0)  # force save on first eligible step
+    dxsav_val = dxsav if dxsav is not None else 1.0
+    xsav = x - 2.0 * dxsav_val  # force save on first eligible step
     xp: List[float] = []
     yp: List[np.ndarray] = []
     kount = 0
@@ -448,7 +449,7 @@ def odeint(
         yscal = np.abs(y) + np.abs(dydx * h) + TINY
 
         # Save if enough distance since last save (and capacity remains)
-        if save_output and (kount < kmax - 1) and (abs(x - xsav) > abs(dxsav)):
+        if save_output and (kount < kmax - 1) and (abs(x - xsav) > abs(dxsav_val)):
             xp.append(x)
             yp.append(y.copy())
             kount += 1
