@@ -1,7 +1,10 @@
+from typing import Union
+
 import numpy as np
 
 import scipy.integrate
 
+from fkptjax.types import Float64NDArray
 from fkptjax.odeint import odeint
 
 
@@ -1181,7 +1184,7 @@ class ModelDerivatives:
             Conformal time η = ln(a).
         y : ndarray
             State vector [D, D'] of length 2.
-        k : float
+        k : float or 1D numpy array of floats
             Comoving wavenumber in h/Mpc.
 
         Returns
@@ -1316,7 +1319,7 @@ class ODESolver:
             soln = odeint(y0, self.xnow, self.xstop, dydx)
             return soln[0]
 
-def DP(k, derivs, solver):
+def DP(k: Union[float, Float64NDArray], derivs, solver):
     """Integrate first-order growth ODE to get D(k, η) and D'(k, η).
 
     Parameters
@@ -1338,8 +1341,27 @@ def DP(k, derivs, solver):
     Initial conditions at xnow: D(k, xnow) = D'(k, xnow) = exp(xnow).
     This normalization ensures D ∝ a in matter domination.
     """
-    y0 = np.exp(solver.xnow) * np.ones(2)
-    return solver(lambda x, y: derivs.firstOrder(x, y, k), y0)
+    # Normalize k to a 1D array for uniform handling
+    k_array = np.atleast_1d(k).astype(float)
+    nk = k_array.size
+
+    # Initial conditions: D = D' = exp(xnow)
+    y0_flat = np.exp(solver.xnow) * np.ones(2 * nk, dtype=float)
+
+    # RHS for the batched system
+    def rhs(x: float, y_flat: Float64NDArray) -> Float64NDArray:
+        Y = y_flat.reshape(2, nk)
+        dYdx = derivs.firstOrder(x, Y, k_array)
+        return np.ravel(dYdx)
+
+    # Integrate
+    y_flat = solver(rhs, y0_flat)
+
+    # Reshape final result to (2, nk)
+    Y = np.reshape(y_flat, (2, nk))
+
+    # Return shape (2,) for scalar k
+    return Y[:, 0] if np.isscalar(k) else Y
 
 def growth_factor(k, derivs, solver):
     """Compute logarithmic growth rate f(k, η) = d ln D / d ln a.
