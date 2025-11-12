@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Callable, Tuple, Union
 
 import numpy as np
 
@@ -34,7 +34,7 @@ class ModelDerivatives:
     All calculations are performed in conformal time η = ln(a) where a is the scale factor.
     """
 
-    def __init__(self, om, ol, fR0, beta2=1.0/6.0, nHS=1, screening=1, omegaBD=0.0):
+    def __init__(self, om: float, ol: float, fR0: float, beta2: float = 1.0/6.0, nHS: int = 1, screening: int = 1, omegaBD: float = 0.0) -> None:
         """Initialize the Hu-Sawicki f(R) model parameters.
 
         Parameters
@@ -73,7 +73,7 @@ class ModelDerivatives:
         self.screening = screening
         self.omegaBD = omegaBD
 
-    def mass(self, eta):
+    def mass(self, eta: Union[float, Float64NDArray]) -> Union[float, Float64NDArray]:
         """Compute effective mass of the scalar field (scalaron) in f(R) gravity.
 
         The mass determines the Compton wavelength λ = 1/m of the fifth force,
@@ -100,7 +100,7 @@ class ModelDerivatives:
             / np.pow(self.om + 4 * self.ol, (1 + self.nHS) / 2)
         )
 
-    def mu(self, eta, k):
+    def mu(self, eta: Union[float, Float64NDArray], k: Union[float, Float64NDArray]) -> Union[float, Float64NDArray]:
         """Compute scale-dependent modification to the Poisson equation μ(k, η).
 
         The μ function quantifies how the gravitational force is modified in f(R) gravity.
@@ -127,7 +127,7 @@ class ModelDerivatives:
         k2 = np.square(k)
         return 1 + 2 * self.beta2 * k2 / (k2 + np.exp(2 * eta) * np.square(self.mass(eta)))
 
-    def PiF(self, eta, k):
+    def PiF(self, eta: Union[float, Float64NDArray], k: Union[float, Float64NDArray]) -> Union[float, Float64NDArray]:
         """Compute the scalar field propagator function Π_F(k, η).
 
         The propagator appears in the denominator of screening terms and determines
@@ -152,7 +152,7 @@ class ModelDerivatives:
         """
         return np.square(k) / np.exp(2 * eta) + np.square(self.mass(eta))
 
-    def M2(self, eta):
+    def M2(self, eta: Union[float, Float64NDArray]) -> Union[float, Float64NDArray]:
         """Compute second-order chameleon screening coefficient M₂(η).
 
         M₂ controls the strength of second-order screening effects in the
@@ -179,7 +179,7 @@ class ModelDerivatives:
             / np.pow(self.om + 4 * self.ol, 4)
         )
 
-    def OmM(self, eta):
+    def OmM(self, eta: Union[float, Float64NDArray]) -> Union[float, Float64NDArray]:
         """Compute matter density parameter Ωₘ(η) as a function of conformal time.
 
         Parameters
@@ -198,7 +198,7 @@ class ModelDerivatives:
         """
         return 1 / (1 + self.ol / self.om * np.exp(3 * eta))
 
-    def H(self, eta):
+    def H(self, eta: Union[float, Float64NDArray]) -> Union[float, Float64NDArray]:
         """Compute normalized Hubble parameter H(η)/H₀.
 
         Parameters
@@ -217,7 +217,7 @@ class ModelDerivatives:
         """
         return np.sqrt(self.om * np.exp(-3 * eta) + self.ol)
 
-    def f1(self, eta):
+    def f1(self, eta: Union[float, Float64NDArray]) -> Union[float, Float64NDArray]:
         """Compute logarithmic growth rate f₁(η) = d ln D/d ln a.
 
         Parameters
@@ -236,7 +236,7 @@ class ModelDerivatives:
         """
         return 3 / (2 * (1 + self.ol / self.om * np.exp(3 * eta)))
 
-    def kpp(self, x, k, p):
+    def kpp(self, x: Union[float, Float64NDArray], k: Union[float, Float64NDArray], p: Union[float, Float64NDArray]) -> Union[float, Float64NDArray]:
         """Compute magnitude of vector sum |k + p| given k, p, and cosine x = k·p/(kp).
 
         Parameters
@@ -255,7 +255,7 @@ class ModelDerivatives:
         """
         return np.sqrt(np.square(k) + np.square(p) + 2 * k * p * x)
 
-    def A0(self, eta):
+    def A0(self, eta: Union[float, Float64NDArray]) -> Union[float, Float64NDArray]:
         """Compute normalization coefficient A₀(η) = 3Ωₘ(η)H²(η)/(2(c/H₀)²).
 
         This appears in the linearized equation of motion for density perturbations.
@@ -277,7 +277,7 @@ class ModelDerivatives:
         """
         return 1.5 * self.OmM(eta) * np.square(self.H(eta)) / np.square(self.invH0)
 
-    def source_a(self, eta, kf):
+    def source_a(self, eta: float, kf: float) -> float:
         """Compute second-order source term 'a' for symmetric kernel.
 
         This is the leading-order contribution to the second-order growth equation,
@@ -299,9 +299,9 @@ class ModelDerivatives:
         -----
         Implements sourceA_HS from csrc/models.c (the 'a' component).
         """
-        return self.f1(eta) * self.mu(eta, kf)
+        return self.f1(eta) * self.mu(eta, kf)  # type: ignore[return-value]
 
-    def source_b(self, eta, kf, k1, k2):
+    def source_b(self, eta: float, kf: float, k1: float, k2: float) -> float:
         """Compute second-order source term 'b' for velocity divergence.
 
         This term accounts for the differential response of the scalar field
@@ -327,9 +327,9 @@ class ModelDerivatives:
         -----
         Implements sourceb_HS from csrc/models.c.
         """
-        return self.f1(eta) * (self.mu(eta, k1) + self.mu(eta, k2) - self.mu(eta, kf))
+        return self.f1(eta) * (self.mu(eta, k1) + self.mu(eta, k2) - self.mu(eta, kf))  # type: ignore[return-value]
 
-    def KFL(self, eta, k, k1, k2):
+    def KFL(self, eta: float, k: float, k1: float, k2: float) -> float:
         """Compute frame-lagging kernel KFL for second-order perturbations.
 
         The frame-lagging term arises from the time derivative of the Newtonian
@@ -364,7 +364,7 @@ class ModelDerivatives:
         term2 = 0.5 * (k2_ - k12 - k22) / k22 * (self.mu(eta, k2) - 1.0)
         return term0 + term1 + term2
 
-    def source_FL(self, eta, kf, k1, k2):
+    def source_FL(self, eta: float, kf: float, k1: float, k2: float) -> float:
         """Compute frame-lagging source term for second-order perturbations.
 
         Parameters
@@ -387,9 +387,9 @@ class ModelDerivatives:
         -----
         Implements sourceFL_HS from csrc/models.c.
         """
-        return self.f1(eta) * np.square(self.mass(eta)) / self.PiF(eta, kf) * self.KFL(eta, kf, k1, k2)
+        return self.f1(eta) * np.square(self.mass(eta)) / self.PiF(eta, kf) * self.KFL(eta, kf, k1, k2)  # type: ignore[return-value]
 
-    def source_dI(self, eta, kf, k1, k2):
+    def source_dI(self, eta: float, kf: float, k1: float, k2: float) -> float:
         """Compute differential interaction source term for second-order.
 
         This term arises from the chameleon screening mechanism and involves
@@ -420,7 +420,7 @@ class ModelDerivatives:
             * np.sqrt(kf) * self.M2(eta) / (self.PiF(eta, kf) * self.PiF(eta, k1) * self.PiF(eta, k2))
         )
 
-    def source_A(self, eta, kf, k1, k2):
+    def source_A(self, eta: float, kf: float, k1: float, k2: float) -> float:
         """Compute total source term A for second-order density perturbations.
 
         This is the complete source term appearing in the equation for the
@@ -450,7 +450,7 @@ class ModelDerivatives:
         return self.source_a(eta, kf) + self.source_FL(eta, kf, k1, k2) - self.source_dI(eta, kf, k1, k2)
 
     # Third order helper functions
-    def M1(self, eta):
+    def M1(self, eta: Union[float, Float64NDArray]) -> Union[float, Float64NDArray]:
         """Compute M₁(η) = 3m²(η) used in third-order frame-lagging.
 
         Parameters
@@ -469,7 +469,7 @@ class ModelDerivatives:
         """
         return 3.0 * np.square(self.mass(eta))
 
-    def M3(self, eta):
+    def M3(self, eta: Union[float, Float64NDArray]) -> Union[float, Float64NDArray]:
         """Compute third-order chameleon screening coefficient M₃(η).
 
         M₃ controls the strength of third-order screening effects in the
@@ -496,7 +496,7 @@ class ModelDerivatives:
             / np.power(self.om + 4.0 * self.ol, 6.0)
         )
 
-    def KFL2(self, eta, x, k, p):
+    def KFL2(self, eta: float, x: float, k: float, p: float) -> float:
         """Compute second-order frame-lagging kernel KFL2 for third-order.
 
         Parameters
@@ -525,7 +525,7 @@ class ModelDerivatives:
             + (k * x / p) * (self.mu(eta, p) - 1.0)
         )
 
-    def JFL(self, eta, x, k, p):
+    def JFL(self, eta: float, x: float, k: float, p: float) -> float:
         """Compute normalized frame-lagging combination JFL.
 
         Parameters
@@ -548,12 +548,13 @@ class ModelDerivatives:
         -----
         Implements JFL_HS from csrc/models.c. Combines KFL2 with propagators.
         """
-        return (
+        result = (
             9.0 / (2.0 * self.A0(eta))
             * self.KFL2(eta, x, k, p) * self.PiF(eta, k) * self.PiF(eta, p)
         )
+        return result  # type: ignore[return-value]
 
-    def D2phiplus(self, eta, x, k, p, Dpk, Dpp, D2f):
+    def D2phiplus(self, eta: float, x: float, k: float, p: float, Dpk: float, Dpp: float, D2f: float) -> float:
         """Compute second-order potential derivative D²φ₊ for k+p combination.
 
         Parameters
@@ -591,7 +592,7 @@ class ModelDerivatives:
             )
         ) * Dpk * Dpp + D2f
 
-    def D2phiminus(self, eta, x, k, p, Dpk, Dpp, D2mf):
+    def D2phiminus(self, eta: float, x: float, k: float, p: float, Dpk: float, Dpp: float, D2mf: float) -> float:
         """Compute second-order potential derivative D²φ₋ for k-p combination.
 
         Parameters
@@ -629,7 +630,7 @@ class ModelDerivatives:
             )
         ) * Dpk * Dpp + D2mf
 
-    def K3dI(self, eta, x, k, p, Dpk, Dpp, D2f, D2mf):
+    def K3dI(self, eta: float, x: float, k: float, p: float, Dpk: float, Dpp: float, D2f: float, D2mf: float) -> float:
         """Compute third-order differential interaction kernel K3dI.
 
         This is the most complex term in third-order perturbation theory,
@@ -713,7 +714,7 @@ class ModelDerivatives:
 
         return t1 + t2 + t3 + t4 + t5 + t6
 
-    def S2a(self, eta, x, k, p):
+    def S2a(self, eta: float, x: float, k: float, p: float) -> float:
         """Compute symmetric second-order source term S2a.
 
         Parameters
@@ -737,9 +738,9 @@ class ModelDerivatives:
         Implements S2a_HS from csrc/models.c. Similar to source_a but for k+p mode.
         """
         kplusp = self.kpp(x, k, p)
-        return self.f1(eta) * self.mu(eta, kplusp)
+        return self.f1(eta) * self.mu(eta, kplusp)  # type: ignore[return-value]
 
-    def S2b(self, eta, x, k, p):
+    def S2b(self, eta: float, x: float, k: float, p: float) -> float:
         """Compute symmetric second-order source term S2b.
 
         Parameters
@@ -763,9 +764,9 @@ class ModelDerivatives:
         Implements S2b_HS from csrc/models.c. Similar to source_b but for k+p mode.
         """
         kplusp = self.kpp(x, k, p)
-        return self.f1(eta) * (self.mu(eta, k) + self.mu(eta, p) - self.mu(eta, kplusp))
+        return self.f1(eta) * (self.mu(eta, k) + self.mu(eta, p) - self.mu(eta, kplusp))  # type: ignore[return-value]
 
-    def S2FL(self, eta, x, k, p):
+    def S2FL(self, eta: float, x: float, k: float, p: float) -> float:
         """Compute symmetric frame-lagging source S2FL for third-order.
 
         Parameters
@@ -789,12 +790,12 @@ class ModelDerivatives:
         Implements S2FL_HS from csrc/models.c.
         """
         kplusp = self.kpp(x, k, p)
-        return self.f1(eta) * (
+        return self.f1(eta) * (  # type: ignore[return-value]
             self.M1(eta) / (3.0 * self.PiF(eta, kplusp))
             * self.KFL2(eta, x, k, p)
         )
 
-    def S2dI(self, eta, x, k, p):
+    def S2dI(self, eta: float, x: float, k: float, p: float) -> float:
         """Compute symmetric differential interaction source S2dI for third-order.
 
         Parameters
@@ -823,7 +824,7 @@ class ModelDerivatives:
             * (np.square(kplusp) * self.M2(eta) / (self.PiF(eta, kplusp) * self.PiF(eta, k) * self.PiF(eta, p)))
         )
 
-    def SD2(self, eta, x, k, p):
+    def SD2(self, eta: float, x: float, k: float, p: float) -> float:
         """Compute total symmetric second-order source SD2 for third-order kernels.
 
         Combines all second-order source contributions for the symmetric third-order
@@ -854,7 +855,7 @@ class ModelDerivatives:
             + self.S2FL(eta, x, k, p) - self.S2dI(eta, x, k, p)
         )
 
-    def S3IIplus(self, eta, x, k, p, Dpk, Dpp, D2f):
+    def S3IIplus(self, eta: float, x: float, k: float, p: float, Dpk: float, Dpp: float, D2f: float) -> float:
         """Compute S3II+ contribution for k+p mode in third-order source.
 
         Parameters
@@ -896,7 +897,7 @@ class ModelDerivatives:
             ) * Dpk * Dpp * Dpp
         )
 
-    def S3IIminus(self, eta, x, k, p, Dpk, Dpp, D2mf):
+    def S3IIminus(self, eta: float, x: float, k: float, p: float, Dpk: float, Dpp: float, D2mf: float) -> float:
         """Compute S3II- contribution for k-p mode in third-order source.
 
         Parameters
@@ -938,7 +939,7 @@ class ModelDerivatives:
             ) * Dpk * Dpp * Dpp
         )
 
-    def S3FLplus(self, eta, x, k, p, Dpk, Dpp, D2f):
+    def S3FLplus(self, eta: float, x: float, k: float, p: float, Dpk: float, Dpp: float, D2f: float) -> float:
         """Compute S3FL+ frame-lagging contribution for k+p mode.
 
         Parameters
@@ -976,7 +977,7 @@ class ModelDerivatives:
             + 3.0 * np.square(x) * (self.mu(eta, k) + self.mu(eta, p) - 2.0) * Dpk * Dpp * Dpp
         )
 
-    def S3FLminus(self, eta, x, k, p, Dpk, Dpp, D2mf):
+    def S3FLminus(self, eta: float, x: float, k: float, p: float, Dpk: float, Dpp: float, D2mf: float) -> float:
         """Compute S3FL- frame-lagging contribution for k-p mode.
 
         Parameters
@@ -1015,7 +1016,7 @@ class ModelDerivatives:
         )
 
     # Main third order source functions
-    def S3I(self, eta, x, k, p, Dpk, Dpp, D2f, D2mf):
+    def S3I(self, eta: float, x: float, k: float, p: float, Dpk: float, Dpp: float, D2f: float, D2mf: float) -> float:
         """Compute third-order source S3I (Type I kernel contribution).
 
         This source combines both k+p and k-p modes with angular factors,
@@ -1062,7 +1063,7 @@ class ModelDerivatives:
             ) * (1.0 - np.square(x)) / (1.0 + np.square(p / k) - 2.0 * (p / k) * x)
         )
 
-    def S3II(self, eta, x, k, p, Dpk, Dpp, D2f, D2mf):
+    def S3II(self, eta: float, x: float, k: float, p: float, Dpk: float, Dpp: float, D2f: float, D2mf: float) -> float:
         """Compute third-order source S3II (Type II kernel contribution).
 
         Combines S3IIplus and S3IIminus contributions from both k±p modes.
@@ -1097,7 +1098,7 @@ class ModelDerivatives:
         """
         return self.S3IIplus(eta, x, k, p, Dpk, Dpp, D2f) + self.S3IIminus(eta, x, k, p, Dpk, Dpp, D2mf)
 
-    def S3FL(self, eta, x, k, p, Dpk, Dpp, D2f, D2mf):
+    def S3FL(self, eta: float, x: float, k: float, p: float, Dpk: float, Dpp: float, D2f: float, D2mf: float) -> float:
         """Compute third-order frame-lagging source S3FL.
 
         Combines frame-lagging contributions from both k±p modes.
@@ -1132,7 +1133,7 @@ class ModelDerivatives:
         """
         return self.S3FLplus(eta, x, k, p, Dpk, Dpp, D2f) + self.S3FLminus(eta, x, k, p, Dpk, Dpp, D2mf)
 
-    def S3dI(self, eta, x, k, p, Dpk, Dpp, D2f, D2mf):
+    def S3dI(self, eta: float, x: float, k: float, p: float, Dpk: float, Dpp: float, D2f: float, D2mf: float) -> float:
         """Compute third-order differential interaction source S3dI.
 
         This is the chameleon screening contribution at third order,
@@ -1172,7 +1173,7 @@ class ModelDerivatives:
             * self.K3dI(eta, x, k, p, Dpk, Dpp, D2f, D2mf) * Dpk * Dpp * Dpp
         )
 
-    def firstOrder(self, x, y, k):
+    def firstOrder(self, x: float, y: Float64NDArray, k: Union[float, Float64NDArray]) -> Float64NDArray:
         """Compute ODE derivatives for first-order perturbation growth.
 
         Solves the coupled system for D(k, η) and D'(k, η) = dD/dη where
@@ -1200,7 +1201,7 @@ class ModelDerivatives:
         f1x = self.f1(x)
         return np.array([y[1], f1x * self.mu(x, k) * y[0] - (2 - f1x) * y[1]])
 
-    def secondOrder(self, x, y, kf, k1, k2):
+    def secondOrder(self, x: float, y: Float64NDArray, kf: float, k1: float, k2: float) -> Float64NDArray:
         """Compute ODE derivatives for second-order kernel calculation.
 
         Solves coupled ODEs for two input modes (k₁, k₂) and two output modes
@@ -1245,7 +1246,7 @@ class ModelDerivatives:
             y[7], f1x * self.mu(x, kf) * y[6] - f2x * y[7] + srcB * y[0] * y[2]
         ])
 
-    def thirdOrder(self, eta, y, x, k, p):
+    def thirdOrder(self, eta: float, y: Float64NDArray, x: float, k: float, p: float) -> Float64NDArray:
         """Compute ODE derivatives for third-order kernel calculation.
 
         Solves coupled ODEs for two input modes (k, p) at angle x = k·p/(kp),
@@ -1304,14 +1305,14 @@ class ODESolver:
 
     Use RKQS for compatibility the original FKPT C code, or scipy_ivp to use
     scipy's built-in ODE solver."""
-    def __init__(self, zout, xnow=-4, method='RKQS'):
-        self.xstop = np.log(1.0/(1.0+zout))
-        self.xnow = xnow
+    def __init__(self, zout: float, xnow: float = -4, method: str = 'RKQS') -> None:
+        self.xstop: float = np.log(1.0/(1.0+zout))
+        self.xnow: float = xnow
         if method not in ['RKQS', 'scipy_ivp']:
             raise ValueError(f"Unknown ODE solver method: {method}")
-        self.method = method
+        self.method: str = method
 
-    def __call__(self, dydx, y0):
+    def __call__(self, dydx: Callable[[float, Float64NDArray], Float64NDArray], y0: Float64NDArray) -> Float64NDArray:
         if self.method == 'scipy_ivp':
             soln = scipy.integrate.solve_ivp(dydx, (self.xnow, self.xstop), y0)
             return soln.y[:, -1]
@@ -1324,7 +1325,7 @@ def DP(k: Union[float, Float64NDArray], derivs, solver):
 
     Parameters
     ----------
-    k : float
+    k : float or 1D numpy array of floats
         Comoving wavenumber in h/Mpc.
     derivs : ModelDerivatives
         Model instance providing ODE derivative functions.
@@ -1363,12 +1364,12 @@ def DP(k: Union[float, Float64NDArray], derivs, solver):
     # Return shape (2,) for scalar k
     return Y[:, 0] if np.isscalar(k) else Y
 
-def growth_factor(k, derivs, solver):
+def growth_factor(k: Union[float, Float64NDArray], derivs, solver):
     """Compute logarithmic growth rate f(k, η) = d ln D / d ln a.
 
     Parameters
     ----------
-    k : float
+    k : float or 1D numpy array of floats
         Comoving wavenumber in h/Mpc.
     derivs : ModelDerivatives
         Model instance providing ODE derivative functions.
@@ -1377,7 +1378,7 @@ def growth_factor(k, derivs, solver):
 
     Returns
     -------
-    float
+    float or 1D numpy array of floats
         Growth rate f(k) = D'(k)/D(k) at final time.
 
     Notes
@@ -1388,7 +1389,7 @@ def growth_factor(k, derivs, solver):
     y = DP(k, derivs, solver)
     return y[1] / y[0]
 
-def D2v2(kf, k1, k2, derivs, solver):
+def D2v2(kf: float, k1: float, k2: float, derivs: ModelDerivatives, solver: ODESolver) -> Float64NDArray:
     """Integrate second-order kernel ODEs for modes k₁ and k₂.
 
     Computes second-order density kernels (A and B terms) from two input
@@ -1424,7 +1425,7 @@ def D2v2(kf, k1, k2, derivs, solver):
     y0[5::2] *= 2
     return solver(lambda x, y: derivs.secondOrder(x, y, kf, k1, k2), y0)
 
-def D3v2(x, k, p, derivs, solver):
+def D3v2(x: float, k: float, p: float, derivs: ModelDerivatives, solver: ODESolver) -> Float64NDArray:
     """Integrate third-order kernel ODE for modes k and p at angle x.
 
     Computes third-order symmetric kernel from two input modes k and p
@@ -1470,7 +1471,7 @@ def D3v2(x, k, p, derivs, solver):
     )
     return solver(lambda eta, y: derivs.thirdOrder(eta, y, x, k, p), y0)
 
-def kernel_constants(f0, derivs, solver):
+def kernel_constants(f0: float, derivs: ModelDerivatives, solver: ODESolver) -> Tuple[float, float, float, float]:
     """Compute normalized kernel constants in the squeezed (k→0) limit.
 
     These constants characterize the IR behavior of perturbation kernels
